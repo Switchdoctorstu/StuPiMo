@@ -46,7 +46,7 @@ Or in verbose mode (Dumps all packets to console)
 	.\StuPiMoDevice -v
 
 UDP requires the interfaces to be running in promiscous mode
-- check with ifconfig
+check with ifconfig
 
 	ifconfig
 
