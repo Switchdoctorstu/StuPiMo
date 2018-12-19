@@ -12,6 +12,7 @@ Starts multiple device handler processes monitoring separate TCP Ports
 - Responds to device calls:
 	- GetBinaryState
 	- SetBinaryState
+
 Starts an SSDP discovery packet handler on the local thread
 - Responds to XML discovery packets
 
