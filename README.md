@@ -9,14 +9,12 @@ to learn python and so needed one written in C.
 **Stuart's Alexa to Raspberry Pi interface** 
 
 Starts multiple device handler processes monitoring separate TCP Ports
-* Responds to device calls:
-	GetBinaryState
-	SetBinaryState
+- Responds to device calls:
+	- GetBinaryState
+	- SetBinaryState
 Starts an SSDP discovery packet handler on the local thread
-* Responds to XML discovery packets
+- Responds to XML discovery packets
 
-Remember to set interface to promiscuous mode with
-sudo ifconfig eth0 promisc
 
 Function:
 
