@@ -5,18 +5,6 @@ Stu's Multiple Wemo Emulator for RPi
 There are a few Wemo Emulators out there - FAUXMO etc. but i couldn't be bothered
 to learn python and so needed one written in C.
 
-Uses WiringPi to operate the GPIO pins
-so use the -lwiringPi compiler option
-
-	gcc -o StuPiMoDevice StuPiMoDevice.c -lwiringPi
-
-To start normally:
-
-	.\StuPiMoDevice
-
-Or in verbose mode (Dumps all packets to console)
-
-	.\StuPiMoDevice -v
 
 **Stuart's Alexa to Raspberry Pi interface** 
 
@@ -43,3 +31,28 @@ Function:
 
 	Alexa then Calls devices with GET and SET state requests
 	Device handlers then toggle the associated GPIO pins.
+
+Uses WiringPi to operate the GPIO pins
+so use the -lwiringPi compiler option
+
+	gcc -o StuPiMoDevice StuPiMoDevice.c -lwiringPi
+
+To start normally:
+
+	.\StuPiMoDevice
+
+Or in verbose mode (Dumps all packets to console)
+
+	.\StuPiMoDevice -v
+
+UDP requires the interfaces to be running in promiscous mode
+- check with ifconfig
+
+	ifconfig
+
+and change if needed:
+
+	sudo ifconfig eth0 promisc
+	sudo ifconfig wlan0 promisc
+
+I had to make this permanent in local.rc
