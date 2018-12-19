@@ -1,15 +1,24 @@
 # StuPiMo
 Stu's Multiple Wemo Emulator for RPi
 
-Stuart's Alexa to Raspberry Pi interface 
+
 There are a few Wemo Emulators out there - FAUXMO etc. but i couldn't be bothered
 to learn python and so needed one written in C.
 
 Uses WiringPi to operate the GPIO pins
 so use the -lwiringPi compiler option
 
-	e.g.  gcc -o StuPiMoDevice StuPiMoDevice.c -lwiringPi
+	gcc -o StuPiMoDevice StuPiMoDevice.c -lwiringPi
 
+To start normally:
+
+	.\StuPiMoDevice
+
+Or in verbose mode (Dumps all packets to console)
+
+	.\StuPiMoDevice -v
+
+**Stuart's Alexa to Raspberry Pi interface** 
 Starts multiple device handler processes monitoring separate TCP Ports
 * Responds to device calls:
 	GetBinaryState
