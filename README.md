@@ -19,6 +19,7 @@ Or in verbose mode (Dumps all packets to console)
 	.\StuPiMoDevice -v
 
 **Stuart's Alexa to Raspberry Pi interface** 
+
 Starts multiple device handler processes monitoring separate TCP Ports
 * Responds to device calls:
 	GetBinaryState
