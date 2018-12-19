@@ -6,7 +6,8 @@ There are a few Wemo Emulators out there - FAUXMO etc. but i couldn't be bothere
 to learn python and so needed one written in C.
 
 Uses WiringPi to operate the GPIO pins
-so use the -lwiringPi compiler option,
+so use the -lwiringPi compiler option
+
 	e.g.  gcc -o StuPiMoDevice StuPiMoDevice.c -lwiringPi
 
 Starts multiple device handler processes monitoring separate TCP Ports
@@ -20,7 +21,8 @@ Remember to set interface to promiscuous mode with
 sudo ifconfig eth0 promisc
 
 Function:
-	Opens device handlers on local sockets counting up from PORTBASE (43540)
+
+	Opens multiple device handlers on local sockets counting up from PORTBASE (43540)
 
 	Watches for discovery packets on UDP SSDP 239.255.255.250 port 1900
 	responds with discovery pointer to http://<ip>:43540+n/setup.xml for each device
