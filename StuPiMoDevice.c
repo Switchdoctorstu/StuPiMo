@@ -1,4 +1,3 @@
-
 /*
 
 Stuart's Alexa to Raspberry Pi interface 
@@ -15,6 +14,9 @@ Remember to set interface to promiscuous mode with
 sudo ifconfig eth0 promisc
 
 Function:
+	The code lists the IP addresses of the available interfaces and uses the last one found.
+		This usually works on the PI as ETH0 is generally highest unless you add in WLAN
+
 	Opens device handlers on local sockets counting up from PORTBASE (43540)
 
 	Watches for discovery packets on UDP SSDP 239.255.255.250 port 1900
@@ -48,7 +50,7 @@ Function:
 #define NUMDEVICES 8
 #define NAMELEN 30			// Size of strings passed around
 #define PORTBASE 43450		// base IP port to increment up from
-#define MAXIF 5				// number of local interfaces 
+#define MAXIF 5				// number of local interfaces (can be used to force the interface as code uses last one found)
 
 
 // setup device tables
@@ -320,7 +322,6 @@ int device( int port, char devicename[NAMELEN], int verbose_mode, int pin)
 				strcat(packet, "Accept - Ranges : bytes\r\n");
 				// get the length of the payload
 				sprintf(tag, "Content-Length: %d\r\n", strlen(response)); // get the length as a string
-				//strcat(packet, "Content-Length: 0\r\n");
 				strcat(packet, tag);
 				strcat(packet, "Content-Type: text/xml\r\n");
 				strcat(packet, "CONNECTION: close\r\n\r\n");
@@ -484,7 +485,6 @@ int ssdp_main(char myaddress[NAMELEN], int verbose_mode)
 }
 
 // returns the number of interfaces found and a char array of their IPs
-
 int get_if_ips(char ifaddresses[MAXIF][NAMELEN])
 {
 	int    iSocket = -1;
@@ -533,6 +533,8 @@ int get_if_ips(char ifaddresses[MAXIF][NAMELEN])
 	return i;
 }
 
+// This is the main code loop
+// executuon starts here
 int main(int argc, char *argv[])
 {
 	// deal with any arguments
@@ -546,18 +548,18 @@ int main(int argc, char *argv[])
 	}
 	// Local Variables
 	int i = 0;  // generic index
-	int root_flag = 1; // mark that this is the root process
-	int ret = 0;			// general returns from calls
+	int root_flag = 1;						// mark that this is the root process
+	int ret = 0;							// general returns from calls
 	int ifcount = 0;						// number of local interfaces
-	char ifaddresses[MAXIF][NAMELEN];			// table of local machine interface addresses
-	char myaddress[NAMELEN];						// my local IP address as a string
+	char ifaddresses[MAXIF][NAMELEN];		// table of local machine interface addresses
+	char myaddress[NAMELEN];				// my local IP address as a string
 // table of devices
-	char friendly[NUMDEVICES][NAMELEN];			// friendly name of the device as alexa will know it
+	char friendly[NUMDEVICES][NAMELEN];		// friendly name of the device as alexa will know it
 	int port[NUMDEVICES];					// port numbers of the child processes
 	int pid[NUMDEVICES];					// process handles for the child devices
 	int gpioPin[NUMDEVICES];				// GPIO Pin assignments per device
 // Load device table
-	ret = setup_names(friendly);					// load the friendly names
+	ret = setup_names(friendly);			// load the friendly names
 	
 	// setup ports
 	for (i = 0; i < NUMDEVICES; i++) {
@@ -565,7 +567,7 @@ int main(int argc, char *argv[])
 		gpioPin[i] = i;
 	}
 	// Get the local interface address
-	ifcount = get_if_ips(ifaddresses);
+	ifcount = get_if_ips(ifaddresses);		// get a list of local IP addresses
 	if (ifcount > 0) {
 		printf("Found %d interfaces \n", ifcount);
 
@@ -574,8 +576,7 @@ int main(int argc, char *argv[])
 		}
 		strcpy(myaddress, ifaddresses[ifcount - 1]);		// get the last address on the list
 
-		// Start the devices
-		// these are a series of forked processes, one per device
+		// Start the devices - these are a series of forked processes, one per device
 		for (i = 0; i < NUMDEVICES; i++) {
 			printf("Root: Spawning \"%s\" on %s port:%d gpio pin:%d\n", friendly[i], myaddress, port[i], gpioPin[i]);
 			int newpid = fork();				// Fork a new process here each loop - we'll end up with one child process per device
@@ -609,10 +610,9 @@ int main(int argc, char *argv[])
 	}
 }
 
-// V0.7
+// V0.71
 // debugging single device registration - DONE
 // Getting local IP address				- DONE (uses last IP on list though)
 // Adding GPIO Controls					- DONE
 // Tightened reporting					- DONE
-
 
