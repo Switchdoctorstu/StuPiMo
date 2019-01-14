@@ -26,7 +26,7 @@ Alexa registers devices based on XML config
 Alexa then Calls devices with GET and SET state requests
 Device handlers then toggle the associated GPIO pins.
 
-needs the -l wiringPi switch added on compile 
+needs the -l wiringPi switch added on compile
 
 */
 // Libraries to include
@@ -79,8 +79,8 @@ int setup_names(char friendly[NUMDEVICES][NAMELEN]) {
 // 
 int device(int port, char devicename[NAMELEN], int verbose_mode, int pin)
 {
-	
-									// Setup Variables
+
+	// Setup Variables
 	int ret;						// used for return status etc
 	int device_state = 0;			// state of the device 1 = on 0 = off -1 = disconnected
 	char msgbuf[MSGBUFSIZE];		// inbound message buffer 
@@ -253,7 +253,7 @@ int device(int port, char devicename[NAMELEN], int verbose_mode, int pin)
 				strcpy(response, "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" ");
 				strcat(response, "s:encodingStyle = \"http://schemas.xmlsoap.org/soap/encoding/\"><s:Body>\r\n");
 				strcat(response, "<u:GetBinaryStateResponse xmlns:u=\"urn:Belkin:service:basicevent:1\">\r\n");
-
+				device_state = digitalRead(pin);
 				// read the device state
 				sprintf(tag, "<BinaryState>%d</BinaryState>\r\n", device_state);
 				strcat(response, tag);
@@ -296,13 +296,13 @@ int device(int port, char devicename[NAMELEN], int verbose_mode, int pin)
 					// set the pins based on the state reveived
 					if (state == 0x30) {
 						device_state = 0;
-						
+
 						digitalWrite(pin, HIGH);			// Relay card is inverted
 						printf("%s:Binary State Set to 0\n", devicename);
 					}
 					if (state == 0x31) {
 						device_state = 1;
-						
+
 						digitalWrite(pin, LOW);	// Relay card is inverted
 						printf("%s:Binary State Set to 1\n", devicename);
 					}
@@ -351,7 +351,6 @@ int device(int port, char devicename[NAMELEN], int verbose_mode, int pin)
 // SSDP DAEMON
 // myaddress: local IP address to add to SSDP response packets
 // verbose mode: 1= print all packets sent and received
-
 int ssdp_main(char myaddress[TAGLEN], int verbose_mode)
 {
 	// this is the ssdp daemon process that is left behind after the child processes have been spawned
@@ -487,7 +486,6 @@ int ssdp_main(char myaddress[TAGLEN], int verbose_mode)
 }
 
 // returns the number of interfaces found and a char array of their IPs and names
-
 int get_if_ips(char ifaddresses[MAXIF][NAMELEN])
 {
 	int    iSocket = -1;
@@ -540,7 +538,7 @@ int get_if_ips(char ifaddresses[MAXIF][NAMELEN])
 // 
 int devicewebSite(int port, char friendly[NUMDEVICES][NAMELEN], int gpioPin[NUMDEVICES], int pinState[NUMDEVICES], int verbose_mode)
 {
-									// Setup Variables
+	// Setup Variables
 	int ret;						// used for return status etc
 	int device_state = 0;			// state of the device 1 = on 0 = off -1 = disconnected
 	char msgbuf[MSGBUFSIZE];		// inbound message buffer 
@@ -550,21 +548,17 @@ int devicewebSite(int port, char friendly[NUMDEVICES][NAMELEN], int gpioPin[NUMD
 	char tag[TAGLEN];				// Tag to search for
 	char *p;					// pointer for general use 
 	int nbytes;					// number of bytes sent or received
-	
-	
+
+
 	int fd = socket(AF_INET, SOCK_STREAM, 0); // create a TCP socket
 	if (fd < 0) {
 		printf("Webserver: socket create failed\n");
 		return 1;
 	}
-	
+
 	// allow multiple sockets to use the same PORT number
 	u_int yes = 1;
-	if (
-		setsockopt(
-			fd, SOL_SOCKET, SO_REUSEADDR, (char*)&yes, sizeof(yes)
-		) < 0
-		) {
+	if (setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, (char*)&yes, sizeof(yes)) < 0) {
 		printf("Web Server: Reusing ADDR failed\n");
 		return 1;
 	}
@@ -575,13 +569,13 @@ int devicewebSite(int port, char friendly[NUMDEVICES][NAMELEN], int gpioPin[NUMD
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = htonl(INADDR_ANY); // any inbount address
 	addr.sin_port = htons(port);
-	
+
 	// bind to receive address
 	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		printf("Webserver: bind error - Port in use?\n");
 		return 1;
 	}
-	
+
 	// use listen to make the socket ready for connections
 	if (listen(fd, 1) < 0)                 // aparently allows 1 requests to queue
 	{
@@ -591,12 +585,10 @@ int devicewebSite(int port, char friendly[NUMDEVICES][NAMELEN], int gpioPin[NUMD
 	}
 	printf("Webserver: Listening on port:%d...\n", port);
 	// now just enter a loop
-	//
 	while (1) {
-
 		int addrlen = sizeof(addr);
 
-		// try to accpt a connection
+		// try to accept a connection
 		child_id = accept(fd, (struct sockaddr *) &addr, &addrlen);
 		if (child_id < 0) {
 			printf("Webserver: Error on accept\n");
@@ -605,7 +597,7 @@ int devicewebSite(int port, char friendly[NUMDEVICES][NAMELEN], int gpioPin[NUMD
 		}
 
 		memset(&msgbuf, 0, sizeof(msgbuf));// zero the buffer
-		
+
 		nbytes = recv(
 			child_id,
 			msgbuf,
@@ -638,23 +630,20 @@ int devicewebSite(int port, char friendly[NUMDEVICES][NAMELEN], int gpioPin[NUMD
 				puts(msgbuf);
 			}
 			// Parse the received request
-			// toggle=Socket+0
-			
 
 			strcpy(tag, "toggle");
-			p = strstr(msgbuf,tag);
+			p = strstr(msgbuf, tag);
 			if (p > 0) {								// we have a toggle request
-				// get the socket number
-				// Toggle the associated state
-				char pc = *(p+14);
+														// get the socket number
+														// Toggle the associated state
+				char pc = *(p + 14);
 				int  pi = pc - '0';						// convert to int
-				
-				// check that device is valid
+
+														// check that device is valid
 				if (pi<0 || pi>(NUMDEVICES - 1)) {
-					printf("Invalid Device number %d \n",pi);
+					printf("Invalid Device number %d \n", pi);
 				}
 				else {
-
 					int pin = gpioPin[pi];
 					printf("Toggle state of pin: %d GPIO: %d \n", pi, pin);
 					if (pinState[pi] == 0) {
@@ -667,7 +656,7 @@ int devicewebSite(int port, char friendly[NUMDEVICES][NAMELEN], int gpioPin[NUMD
 					}
 					// list new states
 					for (int j = 0; j < NUMDEVICES; j++) {
-						int k =digitalRead( gpioPin[j]);
+						int k = digitalRead(gpioPin[j]);
 						printf("Socket: %d  State:%d\n", j, k);
 					}
 				}
@@ -678,55 +667,55 @@ int devicewebSite(int port, char friendly[NUMDEVICES][NAMELEN], int gpioPin[NUMD
 		strcpy(tag, "GET /");
 		ret = strncmp(tag, msgbuf, 3);
 		//if (ret == 0) {								// datagram is a M-SEARCH 
-			printf("Webserver: Webpage request:\n");
-			msgbuf[nbytes] = '\0';
-			if (verbose_mode == 1) {
-				puts(msgbuf);
-			}
-			
-			/*
-			// Build the HTTP payload into a response
-			*/
-			// setup the start of the HTML content
-			strcpy(response, "<body><p> Pi Controller </p>");
-			strcat(response, "<form action = \"socket\" method=\"POST\">");
-			// Loop Through adding the HTML for the buttons
-			for (int i = 0; i < NUMDEVICES; i++) {
-				sprintf(tag,
-					"<p><button type='submit' name='toggle' style='color:green' value='%d'> %s</button></p>\r\n",
-					i,
-					friendly[i]
-				);
-				strcat(response, tag);
-			}
-			// and tail the page
-			strcat(response, "</form></body>\r\n");
+		printf("Webserver: Webpage request:\n");
+		msgbuf[nbytes] = '\0';
+		if (verbose_mode == 1) {
+			puts(msgbuf);
+		}
 
-			// build Http packet
-			strcpy(packet, "HTTP/1.1 200 OK\r\n");
-			strcat(packet, "SERVER: Unspecified,UPnP,Unspecified\r\n");
-			strcat(packet, "LAST-MODIFIED: 12-12-18\r\n");
-			// get the length of the payload
-			sprintf(tag, "CONTENT-LENGTH: %d\r\n", strlen(response)); // get the length as a string
-			strcat(packet, tag);
-			strcat(packet, "CONTENT-TYPE:text/html\r\n");
-			strcat(packet, "CONNECTION:close\r\n\r\n");
-			// add the response payload
-			strcat(packet, response);
-			/* send */
-			if (verbose_mode == 1) {
-				printf("Webserver: Sending:\n %s",  packet);
-			}
-			int cnt = send(child_id, packet, strlen(packet), 0);
-			printf("Webserver: Response sent\n");
-			if (cnt < 0) {
-				printf("Webserver: Error on sendto\n");
-				close(fd);
-				close(child_id);
-				exit(1);
-			}
+		/*
+		// Build the HTTP payload into a response
+		*/
+		// setup the start of the HTML content
+		strcpy(response, "<body><p> Pi Controller </p>");
+		strcat(response, "<form action = \"socket\" method=\"POST\">");
+		// Loop Through adding the HTML for the buttons
+		for (int i = 0; i < NUMDEVICES; i++) {
+			sprintf(tag,
+				"<p><button type='submit' name='toggle' style='color:green' value='%d'> %s</button></p>\r\n",
+				i,
+				friendly[i]
+			);
+			strcat(response, tag);
+		}
+		// and tail the page
+		strcat(response, "</form></body>\r\n");
+
+		// build Http packet
+		strcpy(packet, "HTTP/1.1 200 OK\r\n");
+		strcat(packet, "SERVER: Unspecified,UPnP,Unspecified\r\n");
+		strcat(packet, "LAST-MODIFIED: 12-12-18\r\n");
+		// get the length of the payload
+		sprintf(tag, "CONTENT-LENGTH: %d\r\n", strlen(response)); // get the length as a string
+		strcat(packet, tag);
+		strcat(packet, "CONTENT-TYPE:text/html\r\n");
+		strcat(packet, "CONNECTION:close\r\n\r\n");
+		// add the response payload
+		strcat(packet, response);
+		/* send */
+		if (verbose_mode == 1) {
+			printf("Webserver: Sending:\n %s", packet);
+		}
+		int cnt = send(child_id, packet, strlen(packet), 0);
+		printf("Webserver: Response sent\n");
+		if (cnt < 0) {
+			printf("Webserver: Error on sendto\n");
+			close(fd);
+			close(child_id);
+			exit(1);
+		}
 		//}
-		
+
 	}
 	close(fd);	// close our connection
 	return 0;
@@ -761,9 +750,9 @@ int main(int argc, char *argv[])
 											// Load device table
 	ret = setup_names(friendly);					// load the friendly names
 
-	// setup ports
+													// setup ports
 	wiringPiSetup();				// setup GPIO 
-	
+
 	for (i = 0; i < NUMDEVICES; i++) {
 		pinState[i] = 0;
 		port[i] = PORTBASE + i;
@@ -815,7 +804,7 @@ int main(int argc, char *argv[])
 			else {
 				// Parent
 				// start the Web Site handler
-				ret = devicewebSite(5354, friendly,gpioPin,pinState, verbose_mode);   // jump to Web Server code
+				ret = devicewebSite(5354, friendly, gpioPin, pinState, verbose_mode);   // jump to Web Server code
 				printf("Web Server RESPONDER EXITED!");
 			}
 
