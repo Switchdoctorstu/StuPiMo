@@ -4,29 +4,37 @@ Stuart's Alexa to Raspberry Pi interface
 Device Daemon process
 
 Starts multiple device handler processes monitoring separate TCP Ports
-* Responds to device calls:
-GetBinaryState
-SetBinaryState
+	* Responds to device calls:
+		GetBinaryState
+		SetBinaryState
 Starts an SSDP discovery packet handler on the local thread
-* Responds to XML discovery packets
+	* Responds to XML discovery packets
+Starts a Web-Page server
+	* Actions and responds to toggle requests from web-page
 
 Remember to set interface to promiscuous mode with
 sudo ifconfig eth0 promisc
 
 Function:
-Opens device handlers on local sockets counting up from PORTBASE (43540)
+	Opens device handlers on local sockets counting up from PORTBASE (43540)
 
-Watches for discovery packets on UDP SSDP 239.255.255.250 port 1900
-responds with discovery pointer to http://<ip>:43540+n/setup.xml for each device
+	Watches for discovery packets on UDP SSDP 239.255.255.250 port 1900
+	responds with discovery pointer to http://<ip>:PORTBASE+n/setup.xml for each device
 
-Alexa then polls each logical device
-Devices then respond with configuration xml
-Alexa registers devices based on XML config
+	Alexa then polls each logical device
+	Devices then respond with configuration xml
+	Alexa registers devices based on XML config
 
-Alexa then Calls devices with GET and SET state requests
-Device handlers then toggle the associated GPIO pins.
+	Alexa then Calls devices with GET and SET state requests
+	Device handlers then toggle the associated GPIO pins.
 
-needs the -l wiringPi switch added on compile 
+	Starts a web-page server on WEBPORT
+	generates a button per device
+	actions toggle requests coming from Web page
+
+	Uses wiringPi library to handle GPIO so
+	needs the -l wiringPi switch added on compile:
+	gcc -o StuPiMo StuPiMo.c -l wiringPi
 
 */
 // Libraries to include
@@ -45,8 +53,9 @@ needs the -l wiringPi switch added on compile
 #include <wiringPi.h>		// GPIO Control Library
 
 // global definitions
-#define MSGBUFSIZE 2048
-#define NUMDEVICES 8
+#define WEBPORT 5353		// port to run the web server on
+#define MSGBUFSIZE 2048		// length of HTTP buffers
+#define NUMDEVICES 8		// Number of virtual devices to create 
 #define NAMELEN 30			// Size of device names
 #define TAGLEN 128			// Size of strings passed around
 #define PORTBASE 43450		// base IP port to increment up from
@@ -126,8 +135,7 @@ int device(int port, char devicename[NAMELEN], int verbose_mode, int pin)
 		printf("%s: bind error\n", devicename);
 		return 1;
 	}
-	// printf("%s: Socket Bound\n", devicename);
-
+	
 	// use listen to make the socket ready for connections
 	if (listen(fd, 1) < 0)                 // aparently allows 1 requests to queue
 	{
@@ -536,19 +544,19 @@ int get_if_ips(char ifaddresses[MAXIF][NAMELEN])
 
 // Present and handle web page interactions
 // 
-int devicewebSite(int port, char friendly[NUMDEVICES][NAMELEN], int gpioPin[NUMDEVICES], int pinState[NUMDEVICES], int verbose_mode)
+int devicewebSite(int port, char friendly[NUMDEVICES][NAMELEN], int gpioPin[NUMDEVICES], int verbose_mode)
 {
-									// Setup Variables
-	int ret;						// used for return status etc
-	int device_state = 0;			// state of the device 1 = on 0 = off -1 = disconnected
-	char msgbuf[MSGBUFSIZE];		// inbound message buffer 
-	char packet[MSGBUFSIZE];		// outbound packet buffer
-	char response[MSGBUFSIZE - 256];// buffer for payload
-	int child_id;				// file descriptor for inbound socket
-	char tag[TAGLEN];				// Tag to search for
-	char *p;					// pointer for general use 
-	int nbytes;					// number of bytes sent or received
-	
+										// Setup Variables
+	int ret;							// used for return status etc
+	int device_state = 0;				// state of the device 1 = on 0 = off -1 = disconnected
+	char msgbuf[MSGBUFSIZE];			// inbound message buffer 
+	char packet[MSGBUFSIZE];				// outbound packet buffer
+	char response[MSGBUFSIZE - 256];		// buffer for payload
+	int child_id;							// file descriptor for inbound socket
+	char tag[TAGLEN];						// Tag to search for
+	char *p;								// pointer for general use 
+	int nbytes;								// number of bytes sent or received
+	int pinState[NUMDEVICES];				// Holder for the shared gpio state
 	
 	int fd = socket(AF_INET, SOCK_STREAM, 0); // create a TCP socket
 	if (fd < 0) {
@@ -648,11 +656,11 @@ int devicewebSite(int port, char friendly[NUMDEVICES][NAMELEN], int gpioPin[NUMD
 					printf("Toggle state of pin: %d GPIO: %d \n", pi, pin);
 					if (pinState[pi] == 0) {
 						pinState[pi] = 1;
-						digitalWrite(pin, LOW);		// Relay card is inverted
+						digitalWrite(pin, HIGH);		// Relay card is inverted
 					}
 					else {
 						pinState[pi] = 0;
-						digitalWrite(pin, HIGH);			// Relay card is inverted
+						digitalWrite(pin, LOW);			// Relay card is inverted
 					}
 					// list new states
 					for (int j = 0; j < NUMDEVICES; j++) {
@@ -672,7 +680,10 @@ int devicewebSite(int port, char friendly[NUMDEVICES][NAMELEN], int gpioPin[NUMD
 			if (verbose_mode == 1) {
 				puts(msgbuf);
 			}
-			
+			// refresh the pinstate array from the GPIO
+			for (int i = 0; i < NUMDEVICES; i++) {
+				pinState[i] = digitalRead(gpioPin[i]);
+			}
 			/*
 			// Build the HTTP payload into a response
 			*/
@@ -681,11 +692,22 @@ int devicewebSite(int port, char friendly[NUMDEVICES][NAMELEN], int gpioPin[NUMD
 			strcat(response, "<form action = \"socket\" method=\"POST\">");
 			// Loop Through adding the HTML for the buttons
 			for (int i = 0; i < NUMDEVICES; i++) {
-				sprintf(tag,
-					"<p><button type='submit' name='toggle' style='color:green' value='%d'> %s</button></p>\r\n",
-					i,
-					friendly[i]
-				);
+				
+				if (pinState[i] == 1) {
+					sprintf(tag,
+						"<p><button type='submit' name='toggle' style='background-color:red' value='%d'> %s</button></p>\r\n",
+						i,
+						friendly[i]
+					);
+				}
+				else {
+
+					sprintf(tag,
+						"<p><button type='submit' name='toggle' style='background-color:green' value='%d'> %s</button></p>\r\n",
+						i,
+						friendly[i]
+					);
+				}
 				strcat(response, tag);
 			}
 			// and tail the page
@@ -746,7 +768,7 @@ int main(int argc, char *argv[])
 	int port[NUMDEVICES];					// port numbers of the child processes
 	int pid[NUMDEVICES];					// process handles for the child devices
 	int gpioPin[NUMDEVICES];				// GPIO Pin assignments per device
-	int pinState[NUMDEVICES];				// Holder for the shared gpio state
+	
 											// Load device table
 	ret = setup_names(friendly);					// load the friendly names
 
@@ -754,7 +776,7 @@ int main(int argc, char *argv[])
 	wiringPiSetup();				// setup GPIO 
 	
 	for (i = 0; i < NUMDEVICES; i++) {
-		pinState[i] = 0;
+		
 		port[i] = PORTBASE + i;
 		gpioPin[i] = i;
 		pinMode(i, OUTPUT);			// set our pin to output
@@ -804,7 +826,7 @@ int main(int argc, char *argv[])
 			else {
 				// Parent
 				// start the Web Site handler
-				ret = devicewebSite(5354, friendly,gpioPin,pinState, verbose_mode);   // jump to Web Server code
+				ret = devicewebSite(WEBPORT, friendly,gpioPin, verbose_mode);   // jump to Web Server code
 				printf("Web Server RESPONDER EXITED!");
 			}
 
@@ -820,15 +842,15 @@ int main(int argc, char *argv[])
 
 
 
-// V0.981
+// V0.982
 // debugging single device registration - DONE
 // Getting local IP address				- DONE (uses last IP on list though)
 // Adding GPIO Controls					- DONE
 // Tightened reporting					- DONE
-// Adding web site
+// Adding web site						- Done
 //	Buttons sending toggle				- Done
-//  Response to toggle
-// button colours
+//  Response to toggle					- Done
+// button colours						- Done
 // button names seem to change			- Done - fixed incorrect pointers
 // need exit routine to kill child PIDS
 
