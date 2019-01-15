@@ -16,6 +16,7 @@ Starts multiple device handler processes monitoring separate TCP Ports
 Starts an SSDP discovery packet handler on the local thread
 - Responds to XML discovery packets
 
+Starts a Web Server to offer button control of interface pins
 
 Function:
 
