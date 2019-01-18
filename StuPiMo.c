@@ -68,7 +68,7 @@ int setup_names(char friendly[NUMDEVICES][NAMELEN]) {
 	int i = 0;
 	// use this loop
 	for (i = 0; i < NUMDEVICES; i++) {
-		sprintf(friendly[i], "Socket %d", i);
+		sprintf(friendly[i], "Socket %d", i+1);
 	}
 	// or the following manual table to populate device names
 	/*
@@ -230,7 +230,7 @@ int device(int port, char devicename[NAMELEN], int verbose_mode, int pin)
 			strcat(packet, response);
 			/* send */
 			if (verbose_mode == 1) {
-				printf("%s: Sending:\n %s", devicename, packet);
+				printf("%s: Sending:\n %s\n", devicename, packet);
 			}
 			int cnt = send(child_id, packet, strlen(packet), 0);
 			printf("%s: Response sent\n", devicename);
@@ -243,7 +243,7 @@ int device(int port, char devicename[NAMELEN], int verbose_mode, int pin)
 		}
 		// check for inbound post request
 		strcpy(tag, "POST /upnp");
-		ret = strncmp(tag, msgbuf, 6);
+		ret = strncmp(tag, msgbuf, 7);
 		if (ret == 0) {
 			printf("\n%s: Received UPNP request:\n", devicename);
 			msgbuf[nbytes] = '\0';
@@ -258,14 +258,20 @@ int device(int port, char devicename[NAMELEN], int verbose_mode, int pin)
 				// need to respond with state packet
 				printf("%s: Get State Requested\n", devicename);
 
-				strcpy(response, "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" ");
-				strcat(response, "s:encodingStyle = \"http://schemas.xmlsoap.org/soap/encoding/\"><s:Body>\r\n");
-				strcat(response, "<u:GetBinaryStateResponse xmlns:u=\"urn:Belkin:service:basicevent:1\">\r\n");
+				strcpy(response, "<?xml version=\"1.0\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" ");
+				strcat(response, "s:encodingStyle = \"http://schemas.xmlsoap.org/soap/encoding/\"><s:Body>");
+				strcat(response, "<u:GetBinaryStateResponse xmlns:u=\"urn:Belkin:service:basicevent:1\">");
 				device_state = digitalRead(pin);
+				if (device_state == 0) {
+					device_state = 1;
+				}
+				else {
+					device_state = 0;
+				}
 				// read the device state
-				sprintf(tag, "<BinaryState>%d</BinaryState>\r\n", device_state);
+				sprintf(tag, "<BinaryState>%d</BinaryState>", device_state);
 				strcat(response, tag);
-				strcat(response, "</u:GetBinaryStateResponse>\r\n</s:Body> </s:Envelope>\r\n");
+				strcat(response, "</u:GetBinaryStateResponse></s:Body></s:Envelope>\r\n\r\n");
 
 				// build full response
 				strcpy(packet, "HTTP/1.1 200 OK\r\n");
@@ -275,13 +281,14 @@ int device(int port, char devicename[NAMELEN], int verbose_mode, int pin)
 				// get the length of the payload
 				sprintf(tag, "CONTENT-LENGTH: %d\r\n", strlen(response)); // get the length as a string
 				strcat(packet, tag);
-				strcat(packet, "CONTENT-TYPE:text/xml\r\n");
-				strcat(packet, "CONNECTION:close\r\n\r\n");
+				strcat(packet, "CONTENT-TYPE:text/xml  charset=\"utf-8\"\r\n");
+				// strcat(packet, "CONNECTION:close\r\n");
+				strcat(packet, "\r\n");								// End the headers with double CRLF
 				// add the response payload
 				strcat(packet, response);
 				/* send */
 				if (verbose_mode == 1) {
-					printf("sending:\n %s", packet);
+					printf("sending:\n%s", packet);
 				}
 				int cnt = send(child_id, packet, strlen(packet), 0);
 				if (cnt < 0) {
@@ -316,25 +323,25 @@ int device(int port, char devicename[NAMELEN], int verbose_mode, int pin)
 					}
 				}
 
-				strcpy(response, "<s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" ");
-				strcat(response, "s:encodingStyle = \"http://schemas.xmlsoap.org/soap/encoding/\"><s:Body>\r\n");
-				strcat(response, "<u:SetBinaryStateResponse xmlns:u=\"urn:Belkin:service:basicevent:1\">\r\n");
+				strcpy(response, "<?xml version=\"1.0\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" ");
+				strcat(response, "s:encodingStyle = \"http://schemas.xmlsoap.org/soap/encoding/\"><s:Body>");
+				strcat(response, "<u:SetBinaryStateResponse xmlns:u=\"urn:Belkin:service:basicevent:1\">");
 				// read the device state
-				sprintf(tag, "<BinaryState>%d</BinaryState>\r\n", device_state);
+				sprintf(tag, "<BinaryState>%d</BinaryState>", device_state);
 				strcat(response, tag);
-				strcat(response, "</u:SetBinaryStateResponse>\r\n</s:Body> </s:Envelope>\r\n");
+				strcat(response, "</u:SetBinaryStateResponse></s:Body></s:Envelope>\r\n\r\n");
 				// build full response
 				strcpy(packet, "HTTP/1.1 200 OK\r\n");
-				strcat(packet, "Server: Apache / 2.2.14 (Win32)\r\n");
-				strcat(packet, "Last - Modified : Sat, 20 Nov 2004 07 : 16 : 26 GMT\r\n");
-				strcat(packet, "ETag : \"10000000565a5-2c-3e94b66c2e680\"\r\n");
-				strcat(packet, "Accept - Ranges : bytes\r\n");
+				strcat(packet, "SERVER: Unspecified,UPnP,Unspecified\r\n");
+				strcat(packet, "LAST-MODIFIED: 12-12-18\r\n");
+				strcat(packet, "ETag:\"10000000565a5-2c-3e94b66c2e680\"\r\n");
+				strcat(packet, "Accept-Ranges: bytes\r\n");
 				// get the length of the payload
-				sprintf(tag, "Content-Length: %d\r\n", strlen(response)); // get the length as a string
-																		  //strcat(packet, "Content-Length: 0\r\n");
+				sprintf(tag, "CONTENT-LENGTH: %d\r\n", strlen(response)); // get the length as a string
 				strcat(packet, tag);
-				strcat(packet, "Content-Type: text/xml\r\n");
-				strcat(packet, "CONNECTION: close\r\n\r\n");
+				strcat(packet, "CONTENT-TYPE:text/xml\r\n");
+				strcat(packet, "CONNECTION:close\r\n");
+				strcat(packet, "\r\n");
 				// add the response payload
 				strcat(packet, response);
 				/* send */
@@ -351,8 +358,10 @@ int device(int port, char devicename[NAMELEN], int verbose_mode, int pin)
 
 			}
 		}
+
+		close(child_id);	// close our connection
 	}
-	close(fd);	// close our connection
+	close(fd);
 	return 0;
 }
 
@@ -644,7 +653,7 @@ int devicewebSite(int port, char friendly[NUMDEVICES][NAMELEN], int gpioPin[NUMD
 			if (p > 0) {								// we have a toggle request
 														// get the socket number
 														// Toggle the associated state
-				char pc = *(p + 14);
+				char pc = *(p + strlen(tag));			// get the char after the command
 				int  pi = pc - '0';						// convert to int
 
 														// check that device is valid
@@ -692,10 +701,10 @@ int devicewebSite(int port, char friendly[NUMDEVICES][NAMELEN], int gpioPin[NUMD
 		strcat(response, "<form action = \"socket\" method=\"POST\">");
 		// Loop Through adding the HTML for the buttons
 		for (int i = 0; i < NUMDEVICES; i++) {
-
-			if (pinState[i] == 1) {
+			// Pinstate is inverted
+			if (pinState[i] == 0) {
 				sprintf(tag,
-					"<p><button type='submit' name='toggle' style='background-color:red' value='%d'> %s</button></p>\r\n",
+					"<p><button type='submit' name='toggle%d' style='background-color:red' value='1'> %s</button></p>\r\n",
 					i,
 					friendly[i]
 				);
@@ -703,7 +712,7 @@ int devicewebSite(int port, char friendly[NUMDEVICES][NAMELEN], int gpioPin[NUMD
 			else {
 
 				sprintf(tag,
-					"<p><button type='submit' name='toggle' style='background-color:green' value='%d'> %s</button></p>\r\n",
+					"<p><button type='submit' name='toggle%d' style='background-color:green' value='0'> %s</button></p>\r\n",
 					i,
 					friendly[i]
 				);
@@ -736,8 +745,8 @@ int devicewebSite(int port, char friendly[NUMDEVICES][NAMELEN], int gpioPin[NUMD
 			close(child_id);
 			exit(1);
 		}
-		//}
-
+		
+		close(child_id);
 	}
 	close(fd);	// close our connection
 	return 0;
@@ -763,16 +772,13 @@ int main(int argc, char *argv[])
 	int ifcount = 0;						// number of local interfaces
 	char ifaddresses[MAXIF][NAMELEN];			// table of local machine interface addresses
 	char myaddress[TAGLEN];						// my local IP address as a string
-												// table of devices
+	// table of devices
 	char friendly[NUMDEVICES][NAMELEN];			// friendly name of the device as alexa will know it
 	int port[NUMDEVICES];					// port numbers of the child processes
 	int pid[NUMDEVICES];					// process handles for the child devices
 	int gpioPin[NUMDEVICES];				// GPIO Pin assignments per device
-
-											// Load device table
-	ret = setup_names(friendly);					// load the friendly names
-
-													// setup ports
+	// Load device table
+	ret = setup_names(friendly);					// load the friendly name
 	wiringPiSetup();				// setup GPIO 
 
 	for (i = 0; i < NUMDEVICES; i++) {
@@ -790,9 +796,8 @@ int main(int argc, char *argv[])
 			printf("Address:%s\n", ifaddresses[i]);
 		}
 		strcpy(myaddress, ifaddresses[ifcount - 1]);		// get the last address on the list
-
-															// Start the devices
-															// these are a series of forked processes, one per device
+		// Start the devices
+		// these are a series of forked processes, one per device
 		for (i = 0; i < NUMDEVICES; i++) {
 			printf("Root: Spawning \"%s\" on %s port:%d gpio pin:%d\n", friendly[i], myaddress, port[i], gpioPin[i]);
 			int newpid = fork();				// Fork a new process here each loop - we'll end up with one child process per device
@@ -829,9 +834,7 @@ int main(int argc, char *argv[])
 				ret = devicewebSite(WEBPORT, friendly, gpioPin, verbose_mode);   // jump to Web Server code
 				printf("Web Server RESPONDER EXITED!");
 			}
-
 		}
-
 		return 1;		// end of code
 	}
 	else {
@@ -842,7 +845,7 @@ int main(int argc, char *argv[])
 
 
 
-// V0.982
+// V0.9862
 // debugging single device registration - DONE
 // Getting local IP address				- DONE (uses last IP on list though)
 // Adding GPIO Controls					- DONE
@@ -853,4 +856,5 @@ int main(int argc, char *argv[])
 // button colours						- Done
 // button names seem to change			- Done - fixed incorrect pointers
 // need exit routine to kill child PIDS
+// Debugging broken Alexa responses
 
