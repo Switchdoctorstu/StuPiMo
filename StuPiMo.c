@@ -100,10 +100,10 @@ int device(int port, char devicename[NAMELEN], int verbose_mode, int pin)
 	char tag[128];				// Tag to search for
 	char *p;					// pointer for general use 
 	int nbytes;					// number of bytes sent or received
-								/*
-								* Code starts here
-								*/
-								// create a TCP socket
+	/*
+	* Code starts here
+	*/
+	// create a TCP socket
 	server_fd = socket(AF_INET, SOCK_STREAM, 0); // ordinary TCP socket
 	if (server_fd < 0) {
 		printf("%s: socket create failed\n", devicename);
@@ -321,121 +321,114 @@ int device(int port, char devicename[NAMELEN], int verbose_mode, int pin)
 					}
 				}
 				// check for inbound post request
-				strcpy(tag, "POST /upnp");
-				ret = strncmp(tag, msgbuf, 7);
-				if (ret == 0) {
-					printf("\n%s: Received UPNP request:\n", devicename);
-					msgbuf[nbytes] = '\0';
-					if (verbose_mode == 1) {
-						puts(msgbuf);
-					}
+
 					// Parse the received request
-					strcpy(tag, "GetBinaryState");
-					p = strstr(msgbuf, tag);
-					if (p > 0) {
-						// we've found get binary state
-						// need to respond with state packet
-						printf("%s: Get State Requested\n", devicename);
+				strcpy(tag, "GetBinaryState");
+				p = strstr(msgbuf, tag);
+				if (p > 0) {
+					// we've found get binary state
+					// need to respond with state packet
+					printf("%s: Get State Requested\n", devicename);
 
-						strcpy(response, "<?xml version=\"1.0\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" ");
-						strcat(response, "s:encodingStyle = \"http://schemas.xmlsoap.org/soap/encoding/\"><s:Body>");
-						strcat(response, "<u:GetBinaryStateResponse xmlns:u=\"urn:Belkin:service:basicevent:1\">");
-						device_state = digitalRead(pin);
-						if (device_state == 0) {
-							device_state = 1;
-						}
-						else {
-							device_state = 0;
-						}
-						// read the device state
-						sprintf(tag, "<BinaryState>%d</BinaryState>", device_state);
-						strcat(response, tag);
-						strcat(response, "</u:GetBinaryStateResponse></s:Body></s:Envelope>\r\n\r\n");
-
-						// build full response
-						strcpy(packet, "HTTP/1.1 200 OK\r\n");
-						strcat(packet, "SERVER: Unspecified,UPnP,Unspecified\r\n");
-						strcat(packet, "LAST-MODIFIED: 12-12-18\r\n");
-
-						// get the length of the payload
-						sprintf(tag, "CONTENT-LENGTH: %d\r\n", strlen(response)); // get the length as a string
-						strcat(packet, tag);
-						strcat(packet, "CONTENT-TYPE:text/xml  charset=\"utf-8\"\r\n");
-						// strcat(packet, "CONNECTION:close\r\n");
-						strcat(packet, "\r\n");								// End the headers with double CRLF
-																			// add the response payload
-						strcat(packet, response);
-						/* send */
-						if (verbose_mode == 1) {
-							printf("sending:\n%s", packet);
-						}
-						int cnt = send(child_fd, packet, strlen(packet), 0);
-						if (cnt < 0) {
-							printf("error on sendto");
-
-							close(child_fd);
-							exit(1);
-						}
+					strcpy(response, "<?xml version=\"1.0\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" ");
+					strcat(response, "s:encodingStyle = \"http://schemas.xmlsoap.org/soap/encoding/\"><s:Body>");
+					strcat(response, "<u:GetBinaryStateResponse xmlns:u=\"urn:Belkin:service:basicevent:1\">");
+					device_state = digitalRead(pin);
+					if (device_state == 0) {
+						device_state = 1;
 					}
+					else {
+						device_state = 0;
+					}
+					// read the device state
+					sprintf(tag, "<BinaryState>%d</BinaryState>", device_state);
+					strcat(response, tag);
+					strcat(response, "</u:GetBinaryStateResponse></s:Body></s:Envelope>\r\n\r\n");
 
-					strcpy(tag, "SetBinaryState");
-					p = strstr(msgbuf, tag);
-					if (p > 0) {   // need to Set binary state
-						strcpy(tag, "<BinaryState>");
-						p = strstr(msgbuf, tag);
-						if (p > 0) {
-							// we've found binary state
-							char state = *(p + strlen(tag));  // get the state
-							printf("state requested: %c \n", *(p + strlen(tag)));
-							// set the pins based on the state reveived
-							if (state == 0x30) {
-								device_state = 0;
+					// build full response
+					strcpy(packet, "HTTP/1.1 200 OK\r\n");
+					strcat(packet, "SERVER: Unspecified,UPnP,Unspecified\r\n");
+					strcat(packet, "LAST-MODIFIED: 12-12-18\r\n");
 
-								digitalWrite(pin, HIGH);			// Relay card is inverted
-								printf("%s:Binary State Set to 0\n", devicename);
-							}
-							if (state == 0x31) {
-								device_state = 1;
+					// get the length of the payload
+					sprintf(tag, "CONTENT-LENGTH: %d\r\n", strlen(response)); // get the length as a string
+					strcat(packet, tag);
+					strcat(packet, "CONTENT-TYPE:text/xml  charset=\"utf-8\"\r\n");
+					// strcat(packet, "CONNECTION:close\r\n");
+					strcat(packet, "\r\n");								// End the headers with double CRLF
+																		// add the response payload
+					strcat(packet, response);
+					/* send */
+					if (verbose_mode == 1) {
+						printf("sending:\n%s", packet);
+					}
+					int cnt = send(child_fd, packet, strlen(packet), 0);
+					if (cnt < 0) {
+						printf("error on sendto");
 
-								digitalWrite(pin, LOW);	// Relay card is inverted
-								printf("%s:Binary State Set to 1\n", devicename);
-							}
-						}
-
-						strcpy(response, "<?xml version=\"1.0\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" ");
-						strcat(response, "s:encodingStyle = \"http://schemas.xmlsoap.org/soap/encoding/\"><s:Body>");
-						strcat(response, "<u:SetBinaryStateResponse xmlns:u=\"urn:Belkin:service:basicevent:1\">");
-						// read the device state
-						sprintf(tag, "<BinaryState>%d</BinaryState>", device_state);
-						strcat(response, tag);
-						strcat(response, "</u:SetBinaryStateResponse></s:Body></s:Envelope>\r\n\r\n");
-						// build full response
-						strcpy(packet, "HTTP/1.1 200 OK\r\n");
-						strcat(packet, "SERVER: Unspecified,UPnP,Unspecified\r\n");
-						strcat(packet, "LAST-MODIFIED: 12-12-18\r\n");
-						strcat(packet, "ETag:\"10000000565a5-2c-3e94b66c2e680\"\r\n");
-						strcat(packet, "Accept-Ranges: bytes\r\n");
-						// get the length of the payload
-						sprintf(tag, "CONTENT-LENGTH: %d\r\n", strlen(response)); // get the length as a string
-						strcat(packet, tag);
-						strcat(packet, "CONTENT-TYPE:text/xml\r\n");
-						strcat(packet, "CONNECTION:close\r\n");
-						strcat(packet, "\r\n");
-						// add the response payload
-						strcat(packet, response);
-						/* send */
-						if (verbose_mode == 1) {
-							printf("%s: sending: %s\n", devicename, packet);
-						}
-						int cnt = send(child_fd, packet, strlen(packet), 0);
-						if (cnt < 0) {
-							printf("%s: Error on sendto\n", devicename);
-							close(child_fd);
-							exit(1);
-						}
-
+						close(child_fd);
+						exit(1);
 					}
 				}
+
+				strcpy(tag, "SetBinaryState");
+				p = strstr(msgbuf, tag);
+				if (p > 0) {   // need to Set binary state
+					strcpy(tag, "<BinaryState>");
+					p = strstr(msgbuf, tag);
+					if (p > 0) {
+						// we've found binary state
+						char state = *(p + strlen(tag));  // get the state
+						printf("state requested: %c \n", *(p + strlen(tag)));
+						// set the pins based on the state reveived
+						if (state == 0x30) {
+							device_state = 0;
+
+							digitalWrite(pin, HIGH);			// Relay card is inverted
+							printf("%s:Binary State Set to 0\n", devicename);
+						}
+						if (state == 0x31) {
+							device_state = 1;
+
+							digitalWrite(pin, LOW);	// Relay card is inverted
+							printf("%s:Binary State Set to 1\n", devicename);
+						}
+					}
+
+					strcpy(response, "<?xml version=\"1.0\"?><s:Envelope xmlns:s=\"http://schemas.xmlsoap.org/soap/envelope/\" ");
+					strcat(response, "s:encodingStyle = \"http://schemas.xmlsoap.org/soap/encoding/\"><s:Body>");
+					strcat(response, "<u:SetBinaryStateResponse xmlns:u=\"urn:Belkin:service:basicevent:1\">");
+					// read the device state
+					sprintf(tag, "<BinaryState>%d</BinaryState>", device_state);
+					strcat(response, tag);
+					strcat(response, "</u:SetBinaryStateResponse></s:Body></s:Envelope>\r\n\r\n");
+					// build full response
+					strcpy(packet, "HTTP/1.1 200 OK\r\n");
+					strcat(packet, "SERVER: Unspecified,UPnP,Unspecified\r\n");
+					strcat(packet, "LAST-MODIFIED: 12-12-18\r\n");
+					strcat(packet, "ETag:\"10000000565a5-2c-3e94b66c2e680\"\r\n");
+					strcat(packet, "Accept-Ranges: bytes\r\n");
+					// get the length of the payload
+					sprintf(tag, "CONTENT-LENGTH: %d\r\n", strlen(response)); // get the length as a string
+					strcat(packet, tag);
+					strcat(packet, "CONTENT-TYPE:text/xml\r\n");
+					strcat(packet, "CONNECTION:close\r\n");
+					strcat(packet, "\r\n");
+					// add the response payload
+					strcat(packet, response);
+					/* send */
+					if (verbose_mode == 1) {
+						printf("%s: sending: %s\n", devicename, packet);
+					}
+					int cnt = send(child_fd, packet, strlen(packet), 0);
+					if (cnt < 0) {
+						printf("%s: Error on sendto\n", devicename);
+						close(child_fd);
+						exit(1);
+					}
+
+				}
+
 			}
 			close(child_fd);
 			_exit(0);
@@ -604,7 +597,7 @@ int get_if_ips(char ifaddresses[MAXIF][NAMELEN])
 
 	pIndex = pIndex2 = if_nameindex();
 	// loop through the interfaces
-	while ((pIndex != NULL) && (pIndex->if_name != NULL) && (i<MAXIF))
+	while ((pIndex != NULL) && (pIndex->if_name != NULL) && (i < MAXIF))
 	{
 		struct ifreq req;
 		printf("%d: %s\n", pIndex->if_index, pIndex->if_name);
@@ -952,6 +945,5 @@ int main(int argc, char *argv[])
 // need exit routine to kill child PIDS
 // Debugging broken Alexa responses		- Done - inverted device states for relays
 // need to fork the accept processes	- Done
-// Home Assistant sends requests as two TCP packets
-// Need to compound dual packets
+// Need to compound dual packets		- Done
 
