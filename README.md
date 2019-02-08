@@ -35,15 +35,15 @@ Function:
 Uses WiringPi to operate the GPIO pins
 so use the -lwiringPi compiler option
 
-	gcc -o StuPiMoDevice StuPiMoDevice.c -lwiringPi
+	gcc -o StuPiMo StuPiMo.c -lwiringPi
 
 To start normally:
 
-	.\StuPiMoDevice
+	.\StuPiMo
 
 Or in verbose mode (Dumps all packets to console)
 
-	.\StuPiMoDevice -v
+	.\StuPiMo -v
 
 UDP requires the interfaces to be running in promiscous mode
 check with ifconfig
