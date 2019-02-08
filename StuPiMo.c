@@ -932,7 +932,7 @@ int main(int argc, char *argv[])
 
 
 
-// V0.987d
+// V0.99
 // debugging single device registration - DONE
 // Getting local IP address				- DONE (uses last IP on list though)
 // Adding GPIO Controls					- DONE
@@ -946,5 +946,5 @@ int main(int argc, char *argv[])
 // Debugging broken Alexa responses		- Done - inverted device states for relays
 // need to fork the accept processes	- Done
 // Home Assistant sends requests as two TCP packets
-// Need to compound dual packets
+// Need to compound dual packets		- Done
 
