@@ -59,7 +59,9 @@ I had to make this permanent in local.rc
 
 *Update*
 Added extra debug feature   -w0   and -w1
+
 ./StuPiMo -w0
+
 This puts just the first client into verbose mode to cut down on the noise to the console to let you debug more easily.
 
 
