@@ -35,7 +35,7 @@ Function:
 Uses WiringPi to operate the GPIO pins
 so use the -lwiringPi compiler option
 
-	gcc -o StuPiMo StuPiMo.c -lwiringPi
+	gcc -o StuPiMo StuPiMo.c -l wiringPi
 
 To start normally:
 
