@@ -491,7 +491,7 @@ int ssdp_main(char myaddress[TAGLEN], int verbose_mode)
 	// use setsockopt() to request that the kernel join a multicast group
 	struct ip_mreq mreq;
 	mreq.imr_multiaddr.s_addr = inet_addr(group);
-	mreq.imr_interface.s_addr = inet_addr("192.168.0.37");
+	mreq.imr_interface.s_addr = inet_addr(myaddress);
 	//mreq.imr_ifindex = 0;
 	if (setsockopt(fd, IPPROTO_IP, IP_ADD_MEMBERSHIP, &mreq, sizeof(mreq)) < 0)
 	{
