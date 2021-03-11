@@ -5,7 +5,7 @@ Stu's Multiple Wemo Emulator for RPi
 There are a few Wemo Emulators out there - FAUXMO etc. but i couldn't be bothered
 to learn python and so needed one written in C.
 
-This code allows a set of relays attached to teh Pi's GPIO ports to be controlled from a 'Smarthome' controller like Alexa or Google Home.
+This code allows a set of relays attached to the Raspberry Pi's GPIO ports to be controlled from a 'Smarthome' controller like Alexa or Google Home.
 
 It does this by emulating a Wemo device on the network and responding to UPNP requests from the controller. 
 
